@@ -1,0 +1,6 @@
+# This is the main LVGL section. We start with a simple 4x4 grid.
+lvgl:
+  pages:
+    - id: conf_v_s_screen
+      layout: 4x4
+      styles: page_style

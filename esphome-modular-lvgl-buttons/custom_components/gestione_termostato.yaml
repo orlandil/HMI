@@ -1,0 +1,155 @@
+---
+
+globals:
+  - id: minuti_sotto_soglia
+    type: int
+    restore_value: false
+    initial_value: '0' 
+  - id: minuti_sopra_soglia
+    type: int
+    restore_value: false
+    initial_value: '0' 
+  - id: buttonOF_pressed
+    type: bool
+  - id: buttonSB_pressed
+    type: bool
+
+switch: 
+  - platform: template
+    name: On/Off
+    id: BS_O_O
+    restore_mode: RESTORE_DEFAULT_ON
+    lambda: |-
+      return id(buttonOF_pressed);
+    turn_on_action:
+      - lambda: |-
+          id(buttonOF_pressed) = true;
+    turn_off_action:
+      - lambda: |-
+          id(buttonOF_pressed) = false;
+  
+  - platform: template
+    name: Standby
+    id: BS_S
+    restore_mode: RESTORE_DEFAULT_ON
+    lambda: |-
+      return id(buttonSB_pressed);
+    turn_on_action:
+      - lambda: |-
+          id(buttonSB_pressed) = true;
+      - script.execute: standby_termostato
+    turn_off_action:
+      - lambda: |-
+          id(buttonSB_pressed) = false;
+      - script.stop: standby_termostato
+
+interval:
+  - interval: 60s
+    then:
+      - if:
+          condition:
+            or:
+              - script.is_running: accendi_termostato_con_retry
+              - script.is_running: spegni_termostato_con_retry
+          then:
+            - logger.log: "Lo script è già in azione"
+          else:
+            - lambda: |-
+                if ((id(buttonOF_pressed)) and (!id(buttonSB_pressed))){
+                  if (id(ha_mlabel_sensor_termostato).state < id(n_termostato).state) {
+                    id(minuti_sotto_soglia) += 1;
+                  } else {
+                    id(minuti_sotto_soglia) = 0;
+                    }
+
+                  // Se siamo sotto soglia da almeno 5 minuti → avvia script
+                  if (id(minuti_sotto_soglia) >= 5) {
+                    id(minuti_sotto_soglia) = 0;
+                    id(accendi_termostato_con_retry).execute();
+                  }
+
+                  if (id(ha_mlabel_sensor_termostato).state > id(n_termostato).state) {
+                    id(minuti_sopra_soglia) += 1;
+                  } else {
+                    id(minuti_sopra_soglia) = 0;
+                    }
+
+                  // Se siamo sopra soglia da almeno 5 minuti → avvia script
+                  if (id(minuti_sopra_soglia) >= 5) {
+                    id(minuti_sopra_soglia) = 0;
+                    id(spegni_termostato_con_retry).execute();
+                  }
+                } else return;
+                return;
+
+# Time update script - This is run once per second. Use it to update any time related labels.
+script:
+  - id: accendi_termostato_con_retry
+    mode: queued
+    then:
+      - if:
+          condition:
+            switch.is_off: switch_internal_relay_1
+          then:
+            - switch.turn_on: switch_internal_relay_1
+
+            - repeat:
+                count: 5
+                then:
+                  - delay: 10s
+
+                  - if:
+                      condition:
+                        switch.is_on: switch_internal_relay_1
+                      then:
+                        - logger.log: "Relè già acceso"
+                        - script.stop: accendi_termostato_con_retry
+
+                  - logger.log: "Tentativo di accensione Relè"
+                  - switch.turn_on: switch_internal_relay_1
+
+            - if:
+                condition:
+                  switch.is_off: switch_internal_relay_1
+                then:
+                  - logger.log: "ERRORE: il relè non si accende dopo 5 tentativi"
+                  - script.stop: accendi_termostato_con_retry
+
+  - id: spegni_termostato_con_retry
+    mode: queued
+    then:
+      - if:
+          condition:
+            switch.is_on: switch_internal_relay_1
+          then:
+            - switch.turn_off: switch_internal_relay_1
+
+            - repeat:
+                count: 5
+                then:
+                  - delay: 10s
+
+                  - if:
+                      condition:
+                        switch.is_off: switch_internal_relay_1
+                      then:
+                        - logger.log: "Relè già spento"
+                        - script.stop: spegni_termostato_con_retry
+
+                  - logger.log: "Tentativo di accensione Relè"
+                  - switch.turn_off: switch_internal_relay_1
+
+            - if:
+                condition:
+                  switch.is_on: switch_internal_relay_1
+                then:
+                  - logger.log: "ERRORE: il relè non si spegne dopo 5 tentativi"
+                  - script.stop: spegni_termostato_con_retry
+
+  - id: standby_termostato
+    then:
+      - script.stop: accendi_termostato_con_retry
+      - script.wait: accendi_termostato_con_retry
+      - script.execute: spegni_termostato_con_retry
+      - delay: 30min
+      - switch.turn_off: BS_O_O
