@@ -1,0 +1,242 @@
+---
+# Brightness configuration widgets
+# Variables:
+#   page_id: ID della pagina LVGL
+
+lvgl:
+  pages:
+    - id: !extend ${page_id}
+      layout: 4x4  # Aggiungi questo per abilitare il layout a griglia
+      widgets:
+        - container:
+            id: brightness_config_container
+            # Usa le opzioni di posizionamento della griglia SOLO se la pagina ha un layout
+            grid_cell_row_pos: 0
+            grid_cell_column_pos: 0
+            grid_cell_row_span: 4
+            grid_cell_column_span: 4
+            # In alternativa, puoi usare width/height per definire le dimensioni
+            # width: 480
+            # height: 480
+            grid_cell_x_align: stretch
+            grid_cell_y_align: stretch
+            widgets:
+              - label:
+                  id: brightness_config_title
+                  text: "Configura Retroilluminazione"
+                  align: top_mid
+                  y: 20
+              
+              - label:
+                  id: label_daytime
+                  text: !lambda |-
+                    char buffer[20];
+                    sprintf(buffer, "Giorno: %d%%", id(touchscreen_daytime_brightness));
+                    return std::string(buffer);
+                  align: top_left
+                  x: 30
+                  y: 80
+              
+              - slider:  
+                  id: slider_daytime
+                  width: 280
+                  height: 25
+                  x: 170
+                  y: 75
+                  min_value: 10
+                  max_value: 100
+                  value: !lambda 'return id(touchscreen_daytime_brightness);'
+                  on_value:
+                    then:
+                      - lambda: |-
+                          id(touchscreen_daytime_brightness) = x;
+                      - lvgl.label.update:
+                          id: label_daytime
+                          text: !lambda |-
+                            char buffer[20];
+                            sprintf(buffer, "Giorno: %d%%", id(touchscreen_daytime_brightness));
+                            return std::string(buffer);
+                      - if:
+                          condition:
+                            lambda: 'return id(brightness_mode).current_option() == "Day";'
+                          then:
+                            - light.turn_on:
+                                id: display_backlight
+                                brightness: !lambda 'return id(touchscreen_daytime_brightness) / 100.0;'
+
+              - label:
+                  id: label_evening
+                  text: !lambda |-
+                    char buffer[20];
+                    sprintf(buffer, "Sera: %d%%", id(touchscreen_evening_brightness));
+                    return std::string(buffer);
+                  align: top_left
+                  x: 30
+                  y: 140
+              
+              - slider:
+                  id: slider_evening
+                  width: 280
+                  height: 25
+                  x: 170
+                  y: 135
+                  min_value: 10
+                  max_value: 100
+                  value: !lambda 'return id(touchscreen_evening_brightness);'
+                  on_value:
+                    then:
+                      - lambda: |-
+                          id(touchscreen_evening_brightness) = x;
+                      - lvgl.label.update:
+                          id: label_evening
+                          text: !lambda |-
+                            char buffer[20];
+                            sprintf(buffer, "Sera: %d%%", id(touchscreen_evening_brightness));
+                            return std::string(buffer);
+                      - if:
+                          condition:
+                            lambda: 'return id(brightness_mode).current_option() == "Evening";'
+                          then:
+                            - light.turn_on:
+                                id: display_backlight
+                                brightness: !lambda 'return id(touchscreen_evening_brightness) / 100.0;'
+
+              - label:
+                  id: label_night
+                  text: !lambda |-
+                    char buffer[20];
+                    sprintf(buffer, "Notte: %d%%", id(touchscreen_nighttime_brightness));
+                    return std::string(buffer);
+                  align: top_left
+                  x: 30
+                  y: 200
+              
+              - slider:
+                  id: slider_night
+                  width: 280
+                  height: 25
+                  x: 170
+                  y: 195
+                  min_value: 10
+                  max_value: 100
+                  value: !lambda 'return id(touchscreen_nighttime_brightness);'
+                  on_value:
+                    then:
+                      - lambda: |-
+                          id(touchscreen_nighttime_brightness) = x;
+                      - lvgl.label.update:
+                          id: label_night
+                          text: !lambda |-
+                            char buffer[20];
+                            sprintf(buffer, "Notte: %d%%", id(touchscreen_nighttime_brightness));
+                            return std::string(buffer);
+                      - if:
+                          condition:
+                            lambda: 'return id(brightness_mode).current_option() == "Night";'
+                          then:
+                            - light.turn_on:
+                                id: display_backlight
+                                brightness: !lambda 'return id(touchscreen_nighttime_brightness) / 100.0;'
+
+              - label:
+                  id: label_standby_d
+                  text: !lambda |-
+                    char buffer[20];
+                    sprintf(buffer, "Standby_D: %d%%", id(touchscreen_standby_day));
+                    return std::string(buffer);
+                  align: top_left
+                  x: 30
+                  y: 260
+              
+              - slider:
+                  id: slider_standby_d
+                  width: 280
+                  height: 25
+                  x: 170
+                  y: 255
+                  min_value: 5
+                  max_value: 80
+                  value: !lambda 'return id(touchscreen_standby_day);'
+                  on_value:
+                    then:
+                      - lambda: |-
+                          id(touchscreen_standby_day) = x;
+                      - lvgl.label.update:
+                          id: label_standby_d
+                          text: !lambda |-
+                            char buffer[20];
+                            sprintf(buffer, "Standby: %d%%", id(touchscreen_standby_day));
+                            return std::string(buffer);
+                            
+              - label:
+                  id: label_standby_n
+                  text: !lambda |-
+                    char buffer[20];
+                    sprintf(buffer, "Standby_N: %d%%", id(touchscreen_standby_night));
+                    return std::string(buffer);
+                  align: top_left
+                  x: 30
+                  y: 320
+              
+              - slider:
+                  id: slider_standby_n
+                  width: 280
+                  height: 25
+                  x: 170
+                  y: 315
+                  min_value: 5
+                  max_value: 80
+                  value: !lambda 'return id(touchscreen_standby_night);'
+                  on_value:
+                    then:
+                      - lambda: |-
+                          id(touchscreen_standby_night) = x;
+                      - lvgl.label.update:
+                          id: label_standby_n
+                          text: !lambda |-
+                            char buffer[20];
+                            sprintf(buffer, "Standby: %d%%", id(touchscreen_standby_night));
+                            return std::string(buffer);
+
+              - label:
+                  id: label_timeout
+                  text: !lambda |-
+                    char buffer[20];
+                    sprintf(buffer, "Timeout: %ds", id(touchscreen_idle_timeout_sec));
+                    return std::string(buffer);
+                  align: top_left
+                  x: 30
+                  y: 380
+              
+              - slider:
+                  id: slider_timeout
+                  width: 280
+                  height: 25
+                  x: 170
+                  y: 375
+                  min_value: 30
+                  max_value: 300
+                  value: !lambda 'return id(touchscreen_idle_timeout_sec);'
+                  on_value:
+                    then:
+                      - lambda: |-
+                          id(touchscreen_idle_timeout_sec) = x;
+                      - lvgl.label.update:
+                          id: label_timeout
+                          text: !lambda |-
+                            char buffer[20];
+                            sprintf(buffer, "Timeout: %ds", id(touchscreen_idle_timeout_sec));
+                            return std::string(buffer);
+
+              - button:
+                  align: bottom_right
+                  radius: 15
+                  width: 100
+                  height: 50
+                  widgets:
+                    - label:
+                        text_color: white
+                        align: center
+                        text: "Exit"
+                  on_press:
+                    - lvgl.page.show: main_page

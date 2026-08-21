@@ -1,0 +1,46 @@
+---
+wifi:
+  networks:
+    - ssid: !secret wifi_ssid
+      password: !secret wifi_password
+
+    - ssid: !secret wifi_ssid1
+      password: !secret wifi_password1
+
+    - ssid: !secret wifi_ssid2
+      password: !secret wifi_password2
+
+    - ssid: !secret wifi_ssid3
+      password: !secret wifi_password3
+
+    - ssid: !secret wifi_ssid4
+      password: !secret wifi_password4
+
+    - ssid: !secret wifi_ssid5
+      password: !secret wifi_password5
+
+    - ssid: !secret wifi_ssid6
+      password: !secret wifi_password6
+    
+    - ssid: !secret wifi_ssid7
+      password: !secret wifi_password7
+
+  on_connect: 
+      - delay: 5s
+ 
+  manual_ip:
+    static_ip: 192.168.1.210
+    gateway: 192.168.1.1
+    subnet: 255.255.255.0
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Hmi Fallback Hotspot"
+    password: "IwgVs2BwxvCH"
+   
+captive_portal:
+
+web_server:
+  port: 80
+  version: 3
+  
