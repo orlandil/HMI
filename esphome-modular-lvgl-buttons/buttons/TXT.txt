@@ -1,0 +1,88 @@
+# Definizione di un ID per lo spinbox per poterlo referenziare nelle azioni
+lvgl_spinbox:
+  - id: thermostat_spinbox
+    # Configurazione del widget spinbox
+    spinbox:
+      x: 100  # Posizione X (adatta secondo necessità)
+      y: 100  # Posizione Y (adatta secondo necessità)
+      width: 100 # Larghezza (adatta secondo necessità)
+      height: 30 # Altezza (adatta secondo necessità)
+      digits: 2  # Numero di cifre totali
+      decimal_places: 0 # Nessun decimale
+      range_from: 5  # Valore minimo (es. 5 gradi Celsius)
+      range_to: 30   # Valore massimo (es. 30 gradi Celsius)
+      value: 20      # Valore iniziale (puoi impostarlo staticamente o leggerlo da Home Assistant se disponibile all'avvio)
+      # Se vuoi che il valore iniziale sia quello di Home Assistant all'avvio,
+      # dovrai usare una lambda o un'altra logica per impostarlo qui.
+      # Altrimenti, questo valore verrà usato come default.
+
+# Sensore per leggere il valore da Home Assistant
+sensor:
+  - platform: homeassistant
+    id: ha_temperatura_termostato
+    entity_id: input_number.temperatura_termostato
+    internal: true # Non esporre questo sensore come un sensore ESPHome separato
+    on_value:
+      then:
+        # Aggiorna il valore dello spinbox quando il valore in Home Assistant cambia
+        - lvgl.spinbox.update:
+            id: thermostat_spinbox
+            value: !lambda "return x;" # Usa x che è il valore letto da HA
+
+# Azioni per aggiornare Home Assistant quando il valore dello spinbox cambia
+# LVGL gestisce internamente l'aggiornamento del valore dello spinbox.
+# Dobbiamo solo catturare l'evento di cambio valore e inviare a Home Assistant.
+# Per fare questo, dobbiamo associare un handler di evento allo spinbox.
+# Poiché non vogliamo usare lambda per la configurazione dello spinbox,
+# dobbiamo usare un handler di evento per catturare il cambio valore.
+
+# Nota: LVGL non fornisce un modo diretto per collegare un'azione di aggiornamento
+# a Home Assistant ogni volta che il valore di un widget cambia nativamente senza lambda.
+# L'approccio più pulito per questo è usare un handler di evento.
+# Se vuoi evitare completamente le lambda, potresti dover accettare che
+# l'aggiornamento a Home Assistant avvenga solo tramite un'azione esplicita (es. un pulsante)
+# o tramite polling periodico del valore da Home Assistant.
+
+# Per un aggiornamento in tempo reale a Home Assistant, una lambda è quasi sempre necessaria
+# per intercettare l'evento LV_EVENT_VALUE_CHANGED.
+
+# Se vuoi evitare le lambda completamente, potresti considerare:
+# 1. Avere un pulsante separato che, quando premuto, legge il valore dallo spinbox e lo invia a HA.
+# 2. Usare un sensore che legge periodicamente il valore di input_number.temperatura_termostato da HA
+#    e lo aggiorna sullo spinbox (come fatto nell'esempio sopra con on_value).
+
+# Esempio di come aggiungere un pulsante per inviare il valore a HA (se vuoi evitare l'aggiornamento automatico)
+# button:
+#   - platform: gpio
+#     pin: GPIO12 # Esempio di pin
+#     on_press:
+#       then:
+#         - lvgl.spinbox.get_value:
+#             id: thermostat_spinbox
+#             then:
+#               - homeassistant.service:
+#                   service: input_number.set_value
+#                   data:
+#                     entity_id: input_number.temperatura_termostato
+#                     value: !lambda "return x;"
+
+# Se vuoi che il valore iniziale dello spinbox sia quello di Home Assistant all'avvio,
+# devi usare una lambda per impostarlo. Senza lambda, dovrai impostare un valore statico
+# o leggerlo da un sensore `homeassistant` e poi aggiornare lo spinbox.
+
+# Per aggiornare lo spinbox con il valore di Home Assistant all'avvio, possiamo usare un'azione `on_boot`.
+# Questo è un compromesso per evitare lambda nella configurazione dello spinbox stesso.
+
+on_boot:
+  then:
+    # Legge il valore da Home Assistant e lo imposta sullo spinbox
+    - homeassistant.get_state:
+        entity_id: input_number.temperatura_termostato
+        then:
+          - lambda: |-
+              // Assicurati che il valore letto da HA sia valido prima di impostarlo
+              if (x.is_valid()) {
+                int initial_temp = x.as<int>();
+                id(thermostat_spinbox).set_value(initial_temp);
+              }
+

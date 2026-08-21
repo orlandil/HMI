@@ -1,0 +1,192 @@
+---
+# Switch toggle button
+# vars:
+#    uid:
+#    row:
+#    column:
+#    row_span:
+#    column_span:
+#    text:
+#    icon:
+#    entity_id:
+# slide_button.yaml
+
+font:
+  # http://materialdesignicons.com/cdn/7.4.47/
+  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
+    id: mdi_icons_40
+    size: 40
+    bpp: 8
+    glyphs: [
+      $mdi_lightbulb,  # mdi-lightbulb
+      $mdi_ceiling_light,  # mdi-ceiling-light
+      $mdi_lamp,  # mdi-lamp
+      $mdi_floor_lamp,  # mdi-floor-lamp
+      $mdi_string_lights,  # mdi-string-lights
+      $mdi_track_light,  # mdi-track-light
+      $mdi_bulkhead_light,  # mdi-bulkhead_light
+      $mdi_led_strip,  # mdi-led-strip
+      $mdi_coach_lamp,  # mdi-coach-lamp
+      $mdi_ceiling_fan_light,  # mdi-ceiling-fan-light
+      $mdi_bed,  # mdi-bed
+      $mdi_white_balance_sunny,  # mdi-white-balance-sunny
+      $mdi_brightness_6,  # mdi-brightness-6
+      $mdi_radiator,
+      $mdi_dishwasher,
+      $mdi_washing_machine,
+      $mdi_air_filter,
+      $mdi_fan,
+      $mdi_power_plug,
+      $mdi_cog,
+      $mdi_home,
+      $mdi_information_box,
+      $mdi_chart_bell_curve,
+      $mdi_toggle_switch_variant_off,
+      $mdi_sun_snowflake,
+      $mdi_toggle_switch_variant,
+      $mdi_restore,
+      $mdi_water_percent_alert,
+      $mdi_thermometer,
+    ]
+
+sensor:
+  - platform: homeassistant
+    id: n_termostato
+    name: number_n_termostato 
+    entity_id: input_number.temperatura_termostato
+    on_value: 
+      - lvgl.spinbox.update: 
+          id: spinbox_ther_page_soglia 
+          value: !lambda return x;
+          
+  - platform: template
+    id: ther_page_soglia_number_listener
+    internal: true
+    lambda: |-
+      return id(n_termostato).state;
+    update_interval: 1s
+    on_value:
+      - lvgl.label.update:
+          id: value_ther_page_soglia
+          text: !lambda |-
+            char buffer[16];
+            sprintf(buffer, "%.1f", id(n_termostato).state);
+            return std::string(buffer);
+
+lvgl:
+  pages:
+    - id: termostato_config_page
+      styles: page_style
+      layout: 4x4
+      widgets:
+        - container:
+            id: ther_page_soglia
+            grid_cell_row_pos: 2
+            grid_cell_column_pos: 0
+            grid_cell_row_span: 1
+            grid_cell_column_span: 3
+            grid_cell_x_align: stretch
+            grid_cell_y_align: stretch
+            widgets:
+
+              - button:
+                  id: button_ther_page_soglia
+
+                  widgets:
+                    - label:
+                        id: icon_spin
+                        text_font: mdi_icons_40
+                        align: top_left
+                        text: $mdi_thermometer
+                        
+                    - label:
+                        id: label_ther_page_soglia
+                        align: bottom_left
+                        text: T°
+
+                    # LABEL DEL VALORE (NUOVA)
+                    - label:
+                        id: value_ther_page_soglia
+                        align: top_right
+                        x: -5
+                        y: -10
+                        text: "0"
+                    
+                    - spinbox:
+                        id: spinbox_ther_page_soglia
+                        # Configurazione del widget spinbox
+                        align: top_mid
+                        x: 0  # Posizione X (adatta secondo necessità)
+                        y: 0  # Posizione Y (adatta secondo necessità)
+                        width: 75% # Larghezza (adatta secondo necessità)
+                        height: 30% # Altezza (adatta secondo necessità)
+                        digits: 2  # Numero di cifre totali
+                        decimal_places: 0 # Nessun decimale
+                        range_from: 5  # Valore minimo (es. 5 gradi Celsius)
+                        range_to: 30   # Valore massimo (es. 30 gradi Celsius)
+                        value: 19      # Valore iniziale (puoi impostarlo staticamente o leggerlo da Home Assistant se disponibile all'avvio)
+                        # Se vuoi che il valore iniziale sia quello di Home Assistant all'avvio,
+                        # dovrai usare una lambda o un'altra logica per impostarlo qui.
+                        # Altrimenti, questo valore verrà usato come default.
+                        on_release:
+                          then:
+                            - homeassistant.service:
+                                service: input_number.set_value
+                                data:
+                                  entity_id: input_number.temperatura_termostato
+                                  value: !lambda 'return x;'
+
+
+# Update visual state from HA
+binary_sensor:
+  - id: widget_sensor_ther_page_soglia
+    platform: homeassistant
+    entity_id: switch.${switch_state}
+    trigger_on_initial_state: true
+  
+    on_state:
+      - if:
+          condition:
+            binary_sensor.is_on: widget_sensor_ther_page_soglia
+          then:
+            - lvgl.widget.update:
+                id: button_ther_page_soglia
+                bg_color: $button_on_color
+            - lvgl.widget.update:
+                id: icon_ther_page_soglia
+                text_color: $icon_on_color
+            - lvgl.widget.update:
+                id: label_ther_page_soglia
+                text_color: $label_on_color
+            - lvgl.widget.update:
+                id: spinbox_ther_page_soglia
+                knob:
+                  bg_color: $label_on_color
+          else:
+            - lvgl.widget.update:
+                id: button_ther_page_soglia
+                bg_color: $button_off_color
+            - lvgl.widget.update:
+                id: icon_ther_page_soglia
+                text_color: $icon_off_color
+            - lvgl.widget.update:
+                id: label_ther_page_soglia
+                text_color: $label_off_color
+            - lvgl.widget.update:
+                id: spinbox_ther_page_soglia
+                knob:
+                  bg_color: $label_off_color
+
+#on_boot:
+#  then:
+    # Legge il valore da Home Assistant e lo imposta sullo spinbox
+#    - homeassistant.get_state:
+#        entity_id: input_number.temperatura_termostato
+#        then:
+#          - lambda: |-
+#              // Assicurati che il valore letto da HA sia valido prima di impostarlo
+#              if (x.is_valid()) {
+#                int initial_temp = x.as<int>();
+#                id(thermostat_spinbox).set_value(initial_temp);
+#              }
+

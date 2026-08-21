@@ -1,0 +1,112 @@
+---
+# Switch (or light) toggle button
+# vars:
+#    uid:
+#    row:
+#    column:
+#    row_span:
+#    column_span:
+#    text: 
+#    icon:
+#    entity_id:
+
+# AGGIUNTA: Sensore template per l'aggiornamento automatico del valore
+sensor:
+  - platform: template
+    id: ${uid}_sensor_listener
+    internal: true
+    lambda: |-
+      return id(${sensor_id}).state;
+    update_interval: 10s
+    on_value:
+      then:
+        - lvgl.label.update:
+            id: mlabel_${uid}
+            text: !lambda |-
+              char buffer[16];
+              sprintf(buffer, "%.2f", id(${sensor_id}).state);
+              return std::string(buffer);
+
+lvgl:
+  pages:
+    - id: !extend ${page_id}
+      widgets:
+        - container:
+              id: ${uid}
+              grid_cell_row_pos: ${row}
+              grid_cell_column_pos: ${column}
+              grid_cell_row_span: ${row_span | default(1)}
+              grid_cell_column_span: ${column_span | default(1)}
+              grid_cell_x_align: stretch
+              grid_cell_y_align: stretch
+              # outline_width: 1
+              # outline_color: red
+              widgets:
+              - button:
+                  id: button_${uid}
+                  widgets:
+                    - label:
+                        text_font: $icon_font
+                        align: top_left
+                        id: icon_${uid}
+                        text: ${icon}
+                    - label:
+                        align: left_mid
+                        id: mlabel_${uid}
+                        text: ${stext}
+                    - label:
+                        align: bottom_left
+                        id: label_${uid}
+                        text: ${text}
+                  on_short_click:
+                      - homeassistant.action:
+                          action: homeassistant.toggle
+                          data:
+                            entity_id: ${entity_id}
+
+# This section will update button state and relay states from Home Assistant
+binary_sensor:
+  - id: widget_sensor_${uid}
+    platform: homeassistant
+    entity_id: ${entity_id}
+    trigger_on_initial_state: true
+    on_state:
+      - if:
+          condition:
+            - binary_sensor.is_on: widget_sensor_${uid}
+          then:
+            - lvgl.widget.update:
+                id: button_${uid}
+                bg_color: $button_on_color
+            - lvgl.widget.update:
+                id: icon_${uid}
+                text_color: $icon_on_color
+            - lvgl.widget.update:
+                id: label_${uid}
+                text_color: $label_on_color
+          else:
+            - lvgl.widget.update:
+                id: button_${uid}
+                bg_color: $button_off_color
+            - lvgl.widget.update:
+                id: icon_${uid}
+                text_color: $icon_off_color
+            - lvgl.widget.update:
+                id: label_${uid}
+                text_color: $label_off_color 
+
+button:
+  - platform: template
+    name: Accendi_${uid}
+    on_press:
+      - homeassistant.service:
+          service: light.turn_on
+          data:
+            entity_id: ${entity_id}
+  - platform: template 
+    name: Spegni_${uid}
+    on_press: 
+      - homeassistant.service: 
+          service: light.turn_off 
+          data: 
+            entity_id: ${entity_id}

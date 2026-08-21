@@ -1,0 +1,152 @@
+---
+# Switch toggle button
+# vars:
+#    uid:
+#    row:
+#    column:
+#    row_span:
+#    column_span:
+#    text:
+#    icon:
+#    entity_id:
+# slide_button.yaml
+
+sensor:
+  - platform: homeassistant
+    id: ${number_id}
+    name: number_${number_id} 
+    entity_id: ${entity_id}
+    on_value: 
+      - lvgl.spinbox.update: 
+          id: spinbox_${uid} 
+          value: !lambda return x;
+          
+  - platform: template
+    id: ${uid}_number_listener
+    internal: true
+    lambda: |-
+      return id(${number_id}).state;
+    update_interval: 1s
+    on_value:
+      - lvgl.label.update:
+          id: value_${uid}
+          text: !lambda |-
+            char buffer[16];
+            sprintf(buffer, "%.1f", id(${number_id}).state);
+            return std::string(buffer);
+
+lvgl:
+  pages:
+    - id: !extend ${page_id}
+      widgets:
+        - container:
+            id: ${uid}
+            grid_cell_row_pos: ${row}
+            grid_cell_column_pos: ${column}
+            grid_cell_row_span: ${row_span | default(1)}
+            grid_cell_column_span: ${column_span | default(1)}
+            grid_cell_x_align: stretch
+            grid_cell_y_align: stretch
+            widgets:
+
+              - button:
+                  id: button_${uid}
+
+                  widgets:
+                    - label:
+                        id: icon_${uid}
+                        text_font: $icon_font
+                        align: top_left
+                        text: ${icon}
+
+                    - label:
+                        id: label_${uid}
+                        align: top_left
+                        text: ${text}
+
+                    # LABEL DEL VALORE (NUOVA)
+                    - label:
+                        id: value_${uid}
+                        align: top_right
+                        x: -5
+                        y: -10
+                        text: "0"
+                    
+                    - spinbox:
+                        id: spinbox_${uid}
+                        # Configurazione del widget spinbox
+                        align: bottom_mid
+                        x: 0  # Posizione X (adatta secondo necessità)
+                        y: 0  # Posizione Y (adatta secondo necessità)
+                        width: ${width} # Larghezza (adatta secondo necessità)
+                        height: ${height} # Altezza (adatta secondo necessità)
+                        digits: 3  # Numero di cifre totali
+                        decimal_places: 1 # Nessun decimale
+                        range_from: 5  # Valore minimo (es. 5 gradi Celsius)
+                        range_to: 30   # Valore massimo (es. 30 gradi Celsius)
+                        value: 19      # Valore iniziale (puoi impostarlo staticamente o leggerlo da Home Assistant se disponibile all'avvio)
+                        # Se vuoi che il valore iniziale sia quello di Home Assistant all'avvio,
+                        # dovrai usare una lambda o un'altra logica per impostarlo qui.
+                        # Altrimenti, questo valore verrà usato come default.
+                        on_release:
+                          then:
+                            - homeassistant.service:
+                                service: input_number.set_value
+                                data:
+                                  entity_id: ${entity_id}
+                                  value: !lambda 'return x;'
+
+
+# Update visual state from HA
+binary_sensor:
+  - id: widget_sensor_${uid}
+    platform: homeassistant
+    entity_id: switch.${switch_state}
+    trigger_on_initial_state: true
+  
+    on_state:
+      - if:
+          condition:
+            binary_sensor.is_on: widget_sensor_${uid}
+          then:
+            - lvgl.widget.update:
+                id: button_${uid}
+                bg_color: $button_on_color
+            - lvgl.widget.update:
+                id: icon_${uid}
+                text_color: $icon_on_color
+            - lvgl.widget.update:
+                id: label_${uid}
+                text_color: $label_on_color
+            - lvgl.widget.update:
+                id: spinbox_${uid}
+                knob:
+                  bg_color: $label_on_color
+          else:
+            - lvgl.widget.update:
+                id: button_${uid}
+                bg_color: $button_off_color
+            - lvgl.widget.update:
+                id: icon_${uid}
+                text_color: $icon_off_color
+            - lvgl.widget.update:
+                id: label_${uid}
+                text_color: $label_off_color
+            - lvgl.widget.update:
+                id: spinbox_${uid}
+                knob:
+                  bg_color: $label_off_color
+
+#on_boot:
+#  then:
+    # Legge il valore da Home Assistant e lo imposta sullo spinbox
+#    - homeassistant.get_state:
+#        entity_id: input_number.temperatura_termostato
+#        then:
+#          - lambda: |-
+#              // Assicurati che il valore letto da HA sia valido prima di impostarlo
+#              if (x.is_valid()) {
+#                int initial_temp = x.as<int>();
+#                id(thermostat_spinbox).set_value(initial_temp);
+#              }
+
