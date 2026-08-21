@@ -1,0 +1,765 @@
+esphome:
+  name: "hmi-sala_210"
+  friendly_name: "HMI Sala_210"
+  comment: "Guition ESP32-S3-4848S040 480px * 480px Smart Screen"
+  on_boot:
+    - priority: 400
+      then:
+        - script.execute: update_loading_page
+        - script.execute: ha_connection_timeout
+    - priority: -100
+      then:
+        - script.execute: set_brightness_mode_by_time
+        - script.execute: screensaver_trigger
+
+
+# Guition ESP32-S3-4848S040 480px X 480px Smart Screen
+esp32:
+  variant: esp32s3
+  flash_size: 16MB
+  framework:
+    type: esp-idf
+    advanced:
+       execute_from_psram: true
+
+psram:
+  mode: octal
+  speed: 80MHz
+
+preferences:
+  flash_write_interval: 5min
+
+logger:
+  level: debug
+
+# Substitution variables used through the codebase
+substitutions:
+  icon_font: mdi_icons_40
+  text_font: nunito_20
+  text_color: white
+  bg_color: black
+  button_on_color: "ep_orange"
+  button_off_color: "very_dark_gray"
+  icon_on_color: "yellow"
+  icon_off_color: "gray"
+  label_on_color: "white"
+  label_off_color: "gray"
+  button_text_color: "white"
+  boot_screen_delay: 60s
+  screen_night_hour: '21'
+  screen_night_minute: '00'
+  screen_height: '480'
+  screen_width: '480'
+
+globals:
+  - id: touchscreen_daytime_brightness
+    type: int
+    restore_value: True
+    initial_value: '100'   # percentuale
+  - id: touchscreen_evening_brightness
+    type: int
+    restore_value: True
+    initial_value: '80'
+  - id: touchscreen_nighttime_brightness
+    type: int
+    restore_value: True
+    initial_value: '70'
+  - id: touchscreen_standby_day
+    type: int
+    restore_value: True
+    initial_value: '50'
+  - id: touchscreen_standby_evening
+    type: int
+    restore_value: True
+    initial_value: '40'
+  - id: touchscreen_standby_night
+    type: int
+    restore_value: True
+    initial_value: '30'
+  - id: touchscreen_idle_timeout_sec
+    type: int
+    restore_value: True
+    initial_value: '120'   # secondi
+  - id: touch_active
+    type: bool
+    restore_value: true
+    initial_value: '0'
+
+# Time update script - This is run once per second. Use it to update any time related labels.
+script:
+  - id: time_update
+    then:
+      - lvgl.label.update:
+          id: time_label
+          text: !lambda 'return id(system_time).now().strftime("%H:%M");'
+      - lvgl.label.update:
+          id: screen_saver_time_label
+          text: !lambda 'return id(system_time).now().strftime("%H:%M");'
+  - id: screensaver_trigger
+    mode: restart
+    then:
+      - delay: 30s
+      - lvgl.page.show: screen_saver_page
+        
+button:
+  - platform: restart
+    id: restart_button
+    name: "HMI Restart"
+
+packages:
+  - !include esphome-modular-lvgl-buttons/common/wifi.yaml
+  - !include esphome-modular-lvgl-buttons/common/ota.yaml
+  - !include esphome-modular-lvgl-buttons/common/color.yaml
+  - !include esphome-modular-lvgl-buttons/common/fonts.yaml
+  - !include esphome-modular-lvgl-buttons/common/mdi_glyph_substitutions.yaml
+  - !include esphome-modular-lvgl-buttons/sensors/sensors_base.yaml
+  - !include esphome-modular-lvgl-buttons/common/theme_style.yaml
+  - !include esphome-modular-lvgl-buttons/common/backlight_time.yaml
+  - !include esphome-modular-lvgl-buttons/hardware/guition-esp32-s3-4848s040.yaml
+  - !include esphome-modular-lvgl-buttons/pages/loading_480px.yaml
+# main_page component
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/switch_button.yaml, 
+    vars: { 
+      page_id: main_page, 
+      uid: button_sala, 
+      row: 0, column: 0, 
+      text: Sala, 
+      icon: $mdi_lightbulb, 
+      entity_id: switch.luce_cucina_presa_1 } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/switch_button.yaml, 
+    vars: { 
+      page_id: main_page, 
+      uid: button_garage, 
+      row: 0, column: 1, 
+      text: Garage, 
+      icon: $mdi_lightbulb, 
+      entity_id: switch.luce_garage_presa_1 } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/switch_button.yaml, 
+    vars: { 
+      page_id: main_page, 
+      uid: button_ingresso, 
+      row: 0, column: 2, 
+      text: Ingresso, 
+      icon: $mdi_lightbulb, 
+      entity_id: switch.luce_ingresso_presa_1 } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/switch_button.yaml, 
+    vars: { 
+      page_id: main_page, 
+      uid: button_lavastovglie, 
+      row: 0, column: 3, 
+      text: Lavstovi, 
+      icon: $mdi_dishwasher, 
+      entity_id: switch.lavastovigli_presa_1 } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/switch_button.yaml, 
+    vars: { 
+      page_id: main_page, 
+      uid: button_lavatrice, 
+      row: 1, column: 0, 
+      text: Lavatrice, 
+      icon: $mdi_washing_machine, 
+      entity_id: switch.lavatrice_presa } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/switch_button_stext_2.yaml, 
+    vars: { 
+      page_id: main_page, 
+      uid: button_stufettas, 
+      sensor_id: ventola_sala_t_int,
+      row: 1, column: 1, 
+      text: Stuf. Sala, icon: $mdi_radiator, 
+      entity_id: switch.stufetta_sala_presa_1_2 } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/switch_button_stext_2.yaml, 
+    vars: { 
+      page_id: main_page, 
+      uid: button_stufettac,
+      sensor_id: termostato_211_temepratura_termostato,
+      row: 1, column: 2, 
+      text: Stuf. Came, icon: $mdi_radiator, 
+      entity_id: switch.stufetta_camera_presa_1 } }
+# main page gestione deumidificatore
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/page_button.yaml, 
+    vars: { 
+      page_id: main_page, 
+      uid: button_deumidificatore, 
+      row: 1, column: 3, 
+      text: Deumidif., 
+      icon_font: mdi_icons_80, 
+      icon: $mdi_air_filter,       
+      click_page: deumidificatore_config_page } }  
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/text_button_2.yaml, 
+    vars: { 
+      page_id: deumidificatore_config_page, 
+      uid: text_deu_conf_th, 
+      sensor_id_m: deumidificatore_bagno_h_int,
+      sensor_id_b: deumidificatore_bagno_t_int,
+      row: 0, column: 0, 
+      ttext: T/H Deu } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/switch_button.yaml, 
+    vars: { 
+      page_id: deumidificatore_config_page, 
+      uid: button_deu, 
+      row: 0, column: 1, 
+      text: Deumidif., 
+      icon: $mdi_air_filter, 
+      entity_id: switch.deumidificatore_bagno_switch2 } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/page_button.yaml, 
+    vars: { 
+      page_id: deumidificatore_config_page, 
+      uid: deu_page_home, 
+      row: 3, column: 3, 
+      text: Home, 
+      icon_font: mdi_icons_80, 
+      icon: $mdi_home, 
+      click_page: main_page } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/slide_button.yaml, 
+    vars: { 
+      page_id: deumidificatore_config_page, 
+      uid: deu_page_soglia, 
+      row: 1, column: 0, 
+      row_span: 2, 
+      column_span: 1,
+      width: 30%,
+      height: 75%,
+      n_min: 0,
+      n_max: 100,
+      icon_font: mdi_icons_40, 
+      icon: $mdi_water_percent_alert, 
+      text: Soglia,
+      switch_state: deumidificatore_bagno_switch2,
+      number_id: n_soglia_max_deu,
+      entity_id: input_number.soglia_max_deu } }
+
+# main_page Stampante 3D
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/switch_button.yaml, 
+    vars: { 
+      page_id: main_page, 
+      uid: button_3d, 
+      row: 2, column: 0, 
+      text: 3D, 
+      icon: $mdi_power_plug, 
+      entity_id: switch.presa_libera_1_presa } }
+# main_page gestione ventola sala
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/page_button.yaml, 
+    vars: { 
+      page_id: main_page, 
+      uid: button_ventola_sala, 
+      row: 2, column: 1, 
+      text: Vent_Sala, 
+      icon_font: mdi_icons_80, 
+      icon: $mdi_fan, 
+      click_page: ventola_sala_config_page } }  
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/switch_button.yaml, 
+    vars: { 
+      page_id: ventola_sala_config_page, 
+      uid: v_s_OnOff_button, 
+      row: 0, column: 0, 
+      text: On/Off, 
+      icon: $mdi_toggle_switch_variant, 
+      entity_id: switch.ventola_sala_on_off } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/switch_button.yaml, 
+    vars: { 
+      page_id: ventola_sala_config_page, 
+      uid: v_s_vent_button, 
+      row: 0, column: 1, 
+      text: Ventola, 
+      icon: $mdi_fan, 
+      entity_id: fan.ventola_sala_ventola } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/switch_button.yaml, 
+    vars: { 
+      page_id: ventola_sala_config_page, 
+      uid: v_s_standby_button, 
+      row: 0, column: 2, 
+      text: Standby, 
+      icon: $mdi_toggle_switch_variant_off, 
+      entity_id: switch.ventola_sala_standby } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/switch_button.yaml, 
+    vars: { 
+      page_id: ventola_sala_config_page, 
+      uid: v_s_EstInv_button, 
+      row: 0, column: 3, 
+      text: Estate/Iverno, 
+      icon: $mdi_sun_snowflake, 
+      entity_id: switch.ventola_sala_estate_inverno } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/switch_button.yaml, 
+    vars: { 
+      page_id: ventola_sala_config_page, 
+      uid: v_s_Reset_button, 
+      row: 1, column: 0, 
+      text: Reset, 
+      icon: $mdi_restore, 
+      entity_id: button.ventola_sala_ventola_sala_restart } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/text_button_2.yaml, 
+    vars: { 
+      page_id: ventola_sala_config_page, 
+      uid: v_sala_t_h, 
+      sensor_id_m: ventola_sala_t_int, 
+      sensor_id_b: ventola_sala_h_int,
+      row: 1, column: 1, 
+      ttext: T/H Int } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/text_button_2.yaml, 
+    vars: { 
+      page_id: ventola_sala_config_page, 
+      uid: v_sala_t_p, 
+      sensor_id_m: ventola_sala_t_ext,
+      sensor_id_b: ventola_sala_p_ext,
+      row: 1, column: 2, 
+      ttext: T/P Ext } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/page_button.yaml, 
+    vars: { 
+      page_id: ventola_sala_config_page, 
+      uid: v_sala_page_home, 
+      row: 3, column: 3, 
+      text: Home, 
+      icon_font: mdi_icons_80, 
+      icon: $mdi_home, 
+      click_page: main_page } }
+
+# main_page gestione ventola terzo piano  
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/page_button.yaml, 
+    vars: { 
+      page_id: main_page, 
+      uid: button_ventola_terzo_piano, 
+      row: 2, column: 2, 
+      text: Vent_3°, 
+      icon_font: mdi_icons_80, 
+      icon: $mdi_fan, 
+      click_page: ventola_terzo_piano_config_page } }  
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/switch_button.yaml, 
+    vars: { 
+      page_id: ventola_terzo_piano_config_page, 
+      uid: v_tp_OnOff_button, 
+      row: 0, column: 0, 
+      text: On/Off, 
+      icon: $mdi_toggle_switch_variant, 
+      entity_id: switch.ventola_terzo_piano_on_off } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/switch_button.yaml, 
+    vars: { 
+      page_id: ventola_terzo_piano_config_page, 
+      uid: v_tp_vent_button, 
+      row: 0, column: 1, 
+      text: Ventola, 
+      icon: $mdi_fan, 
+      entity_id: fan.ventola_terzo_piano_ventola } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/switch_button.yaml, 
+    vars: { 
+      page_id: ventola_terzo_piano_config_page, 
+      uid: v_tp_standby_button, 
+      row: 0, column: 2, 
+      text: Standby, 
+      icon: $mdi_toggle_switch_variant_off, 
+      entity_id: switch.ventola_terzo_piano_standby } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/switch_button.yaml, 
+    vars: { 
+      page_id: ventola_terzo_piano_config_page, 
+      uid: v_tp_EstInv_button, 
+      row: 0, column: 3, 
+      text: Estate/Iverno, 
+      icon: $mdi_sun_snowflake, 
+      entity_id: switch.ventola_terzo_piano_estate_inverno } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/switch_button.yaml, 
+    vars: { 
+      page_id: ventola_terzo_piano_config_page, 
+      uid: v_tp_Reset_button, 
+      row: 1, column: 0, 
+      text: Reset, 
+      icon: $mdi_restore, 
+      entity_id: button.ventola_terzo_piano_ventola_terzo_piano_restart } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/text_button_2.yaml, 
+    vars: { 
+      page_id: ventola_terzo_piano_config_page, 
+      uid: v_tp_t_h, 
+      sensor_id_m: termometro_3deg_piano_temperatura,
+      sensor_id_b: termometro_3deg_piano_umidita,
+      row: 1, column: 1, 
+      ttext: T/H Int } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/text_button_2.yaml, 
+    vars: { 
+      page_id: ventola_terzo_piano_config_page, 
+      uid: v_tp_t_p, 
+      sensor_id_m: ventola_terzo_piano_t_ext,
+      sensor_id_b: ventola_terzo_piano_h_ext,
+      row: 1, column: 2, 
+      ttext: T/P Ext } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/page_button.yaml, 
+    vars: { 
+      page_id: ventola_terzo_piano_config_page, 
+      uid: v_tp_page_home, 
+      row: 3, column: 3, 
+      text: Home, 
+      icon_font: mdi_icons_80, 
+      icon: $mdi_home, 
+      click_page: main_page } }
+
+# main_page thermostat button
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/page_button.yaml, 
+    vars: { 
+      page_id: main_page, 
+      uid: button_termostato, 
+      row: 2, column: 3, 
+      text: Termostato, 
+      icon_font: mdi_icons_80, 
+      icon: $mdi_thermometer, 
+      click_page: termostato_config_page } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/switch_button.yaml, 
+    vars: { 
+      page_id: termostato_config_page, 
+      uid: button_onoff, 
+      row: 0, column: 0, 
+      text: Off/On, 
+      icon: $mdi_lightbulb,
+      entity_id: switch.termostato_211_on_off } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/switch_button.yaml, 
+    vars: { 
+      page_id: termostato_config_page, 
+      uid: button_stand, 
+      row: 0, column: 1, 
+      text: StandBy, 
+      icon: $mdi_lightbulb, 
+      entity_id: switch.termostato_211_standby } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/text_button_2.yaml, 
+    vars: { 
+      page_id: termostato_config_page, 
+      uid: sensor_termostato, 
+      sensor_id_m: termostato_211_temepratura_termostato,
+      sensor_id_b: termostato_211_umidita_termostato,
+      row: 0, column: 2, 
+      ttext: Termostato } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/switch_button.yaml, 
+    vars: { 
+      page_id: termostato_config_page, 
+      uid: button_caldaia, 
+      row: 0, column: 3, 
+      text: Caldaia, 
+      icon: $mdi_radiator, 
+      entity_id: switch.termostato_211_relay_1 } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/slide_button_oriz.yaml, 
+    vars: { 
+      page_id: termostato_config_page, 
+      uid: ther_page_soglia, 
+      row: 1, column: 0, 
+      row_span: 1, 
+      column_span: 4,
+      width: 85%,
+      height: 30%,
+      n_min: 0,
+      n_max: 25,
+      icon_font: mdi_icons_40, 
+      icon: $mdi_thermometer, 
+      text: Temperatura impostata,
+      switch_state: termostato_211_relay_1,
+      number_id: n_termostato,
+      entity_id: input_number.temperatura_termostato } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/page_button.yaml, 
+    vars: { 
+      page_id: termostato_config_page, 
+      uid: termostato_page_home, 
+      row: 3, column: 3, 
+      text: Home, 
+      icon_font: mdi_icons_80, 
+      icon: $mdi_home, 
+      click_page: main_page } }
+
+# main_page time button
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/time_button.yaml, 
+    vars: { 
+      page_id: main_page, 
+      uid: button_time, 
+      row: 3, column: 3, 
+      text: 00:00, 
+      icon: $mdi_clock, 
+      click_page: info_screen } }
+# main_page config button
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/page_button.yaml, 
+    vars: { 
+      page_id: main_page, 
+      uid: button_main_config, 
+      row: 3, column: 0, 
+      text: Config, 
+      icon_font: mdi_icons_80, 
+      icon: $mdi_cog, 
+      click_page: main_config_page } }  
+  # main_config_page light config button
+  - !include { 
+    file: esphome-modular-lvgl-buttons/pages/brightness_config.yaml, 
+    vars: { 
+      page_id: brightness_config_page } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/page_button.yaml, 
+    vars: { 
+      page_id: main_config_page, 
+      uid: button_light_config, 
+      row: 0, column: 0, 
+      text: Light, 
+      icon_font: mdi_icons_80, 
+      icon: $mdi_cog, 
+      click_page: brightness_config_page } }  
+  # main_config_page info button
+  - !include esphome-modular-lvgl-buttons/pages/info.yaml
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/page_button.yaml, 
+    vars: { 
+      page_id: main_config_page, 
+      uid: button_info, 
+      row: 3, column: 0, 
+      text: Info screen, 
+      icon_font: mdi_icons_80, 
+      icon: $mdi_information_box, 
+      click_page: info_screen } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/page_button.yaml, 
+    vars: { 
+      page_id: main_config_page, 
+      uid: main_config_page_home, 
+      row: 3, column: 3, 
+      text: Home, 
+      icon_font: mdi_icons_80, 
+      icon: $mdi_home, 
+      click_page: main_page } }
+
+# main_page sensor button
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/page_button.yaml, 
+    vars: { 
+      page_id: main_page, 
+      uid: button_sensor, 
+      row: 3, column: 1, 
+      text: Sensor, 
+      icon_font: mdi_icons_80, 
+      icon: $mdi_chart_bell_curve, 
+      click_page: sensor_page } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/text_button_2.yaml, 
+    vars: { 
+      page_id: sensor_page, 
+      uid: sensor_camera, 
+      sensor_id_m: camera_temepratura_camera,
+      sensor_id_b: camera_umidita_camera,
+      row: 0, column: 0, 
+      ttext: Camera } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/text_button_2.yaml, 
+    vars: { 
+      page_id: sensor_page, 
+      uid: sensor_sala, 
+      sensor_id_m: ventola_sala_t_int,
+      sensor_id_b: ventola_sala_h_int,
+      row: 0, column: 1, 
+      ttext: Sala } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/text_button_2.yaml, 
+    vars: { 
+      page_id: sensor_page, 
+      uid: sensor_ext, 
+      sensor_id_m: ventola_terzo_piano_t_ext,
+      sensor_id_b: ventola_terzo_piano_h_ext,
+      row: 1, column: 0, 
+      ttext: Esterno } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/text_button_2.yaml, 
+    vars: { 
+      page_id: sensor_page, 
+      uid: sensor_teleruttore, 
+      sensor_id_m: teleruttore_generale_potenza,
+      sensor_id_b: teleruttore_generale_corrente,
+      row: 1, column: 1, 
+      ttext: Telerut } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/text_button_2.yaml, 
+    vars: { 
+      page_id: sensor_page, 
+      uid: sensor_termostatos, 
+      sensor_id_m: termostato_211_temepratura_termostato,
+      sensor_id_b: termostato_211_umidita_termostato,
+      row: 1, column: 2, 
+      ttext: Termostato } }
+  - !include { 
+    file: esphome-modular-lvgl-buttons/buttons/page_button.yaml, 
+    vars: { 
+      page_id: sensor_page, 
+      uid: sensor_page_home, 
+      row: 3, column: 3, 
+      text: Home, 
+      icon_font: mdi_icons_80, 
+      icon: $mdi_home, 
+      click_page: main_page } }
+
+lvgl:
+  pages:
+    - id: main_page
+      layout: 4x4
+      styles: page_style
+
+    - id: main_config_page
+      styles: page_style
+      layout: 4x4
+
+    - id: brightness_config_page
+      styles: page_style
+      layout: 4x4
+    
+    - id: sensor_page
+      styles: page_style
+      layout: 4x4
+  
+    - id: ventola_sala_config_page
+      styles: page_style
+      layout: 4x4
+
+    - id: ventola_terzo_piano_config_page
+      styles: page_style
+      layout: 4x4
+    
+    - id: deumidificatore_config_page
+      styles: page_style
+      layout: 4x4
+    
+    - id: termostato_config_page
+      styles: page_style
+      layout: 4x4
+    
+    - id: screen_saver_page
+      widgets:
+        - image:
+            src: screen_saver_img
+            align: CENTER
+            on_click:
+              then:
+               - lvgl.page.show: main_page
+               - script.execute: screensaver_trigger      
+        - label:
+            bg_opa: TRANSP
+            align: bottom_mid
+            id: screen_saver_time_label
+            text_font: nunito_110
+            text_color: burlywood
+            text: '24:00'
+        - label:
+            bg_opa: TRANSP
+            align: top_left
+            id: screen_saver_temp_label
+            text_font: nunito_72
+            text_color: burlywood
+            text: t_sala
+        - label:
+            bg_opa: TRANSP
+            align: top_right
+            id: screen_saver_hum_label
+            text_font: nunito_72
+            text_color: burlywood
+            text: h_sala
+       
+  on_idle:
+    - timeout: 30s
+      then:
+        - lvgl.page.show: screen_saver_page
+
+# If you want to use other icons add them to the list here
+font:
+  # http://materialdesignicons.com/cdn/7.4.47/
+  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
+    id: mdi_icons_40
+    size: 40
+    bpp: 8
+    glyphs: [
+      $mdi_lightbulb,  # mdi-lightbulb
+      $mdi_ceiling_light,  # mdi-ceiling-light
+      $mdi_lamp,  # mdi-lamp
+      $mdi_floor_lamp,  # mdi-floor-lamp
+      $mdi_string_lights,  # mdi-string-lights
+      $mdi_track_light,  # mdi-track-light
+      $mdi_bulkhead_light,  # mdi-bulkhead_light
+      $mdi_led_strip,  # mdi-led-strip
+      $mdi_coach_lamp,  # mdi-coach-lamp
+      $mdi_ceiling_fan_light,  # mdi-ceiling-fan-light
+      $mdi_bed,  # mdi-bed
+      $mdi_white_balance_sunny,  # mdi-white-balance-sunny
+      $mdi_brightness_6,  # mdi-brightness-6
+      $mdi_radiator,
+      $mdi_dishwasher,
+      $mdi_washing_machine,
+      $mdi_air_filter,
+      $mdi_fan,
+      $mdi_power_plug,
+      $mdi_cog,
+      $mdi_home,
+      $mdi_information_box,
+      $mdi_chart_bell_curve,
+      $mdi_toggle_switch_variant_off,
+      $mdi_sun_snowflake,
+      $mdi_toggle_switch_variant,
+      $mdi_restore,
+      $mdi_water_percent_alert,
+      $mdi_thermometer,
+    ]
+  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
+    id: mdi_icons_80
+    size: 80
+    bpp: 8
+    glyphs: [
+      $mdi_lightbulb,  # mdi-lightbulb
+      $mdi_ceiling_light,  # mdi-ceiling-light
+      $mdi_lamp,  # mdi-lamp
+      $mdi_floor_lamp,  # mdi-floor-lamp
+      $mdi_string_lights,  # mdi-string-lights
+      $mdi_track_light,  # mdi-track-light
+      $mdi_bulkhead_light,  # mdi-bulkhead_light
+      $mdi_led_strip,  # mdi-led-strip
+      $mdi_coach_lamp,  # mdi-coach-lamp
+      $mdi_ceiling_fan_light,  # mdi-ceiling-fan-light
+      $mdi_bed,  # mdi-bed
+      $mdi_white_balance_sunny,  # mdi-white-balance-sunny
+      $mdi_brightness_6,  # mdi-brightness-6
+      $mdi_radiator,
+      $mdi_dishwasher,
+      $mdi_washing_machine,
+      $mdi_air_filter,
+      $mdi_fan,
+      $mdi_power_plug,
+      $mdi_cog,
+      $mdi_home,
+      $mdi_information_box,
+      $mdi_chart_bell_curve,
+      $mdi_toggle_switch_variant_off,
+      $mdi_sun_snowflake,
+      $mdi_toggle_switch_variant,
+      $mdi_restore,
+      $mdi_thermometer,
+    ]
